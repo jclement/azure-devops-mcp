@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data/
+# built CSS artifact (rebuilt by mise dev/build)
+public/app.css
+*.log
+.DS_Store
