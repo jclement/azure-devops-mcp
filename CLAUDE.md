@@ -9,8 +9,7 @@ A self-hosted, single-container **multi-user** wrapper that fronts Microsoft's
 passkey auth (people), OAuth 2.1 + API tokens (agents), per-user Azure DevOps
 PATs (encrypted at rest), an audit log, and an upstream auto-updater. Runtime is
 **Bun + TypeScript + Hono**; UI is **server-rendered Hono JSX + HTMX + Tailwind
-v4**; state is **bun:sqlite**. Modeled on the sibling `devops-mcp` (Obsidian)
-project's conventions.
+v4**; state is **bun:sqlite**.
 
 ## Commands
 

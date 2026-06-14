@@ -57,8 +57,12 @@ totals survive restarts), and push to connected browsers every 2s.
 
 ```sh
 bun install
-MASTER_KEY=$(openssl rand -base64 32) mise run dev   # http://localhost:3000
+mise run dev   # http://localhost:3000
 ```
+
+Dev uses a built-in `"DEVELOPMENT"` master key if `MASTER_KEY` is unset, so locally
+stored PATs survive restarts. **Production requires a real `MASTER_KEY`** (the
+server refuses to boot without one when `NODE_ENV=production`).
 
 Open `/register`, create a passkey, then add a connection (org + PAT) on the
 Connections page. Create an API token on the Tokens page and point a client at it:

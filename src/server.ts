@@ -60,9 +60,11 @@ const runtime: ProxyRuntime = {
 setInterval(() => {
   sweepExpired(db);
   pruneAudit(db);
-  supervisor.reap(config.childIdleMs);
 }, 3_600_000);
 sweepExpired(db);
+
+// reap idle upstream children at minute granularity so CHILD_IDLE_MS is accurate
+setInterval(() => supervisor.reap(config.childIdleMs), 60_000);
 
 // flush live metrics to disk so lifetime totals survive restarts
 setInterval(flushMetrics, 30_000);
