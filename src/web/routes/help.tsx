@@ -102,6 +102,18 @@ export function HelpPage(props: { loggedIn: boolean; userName?: string }) {
             </p>
           </Card>
 
+          <Card title="Run your own">
+            <p class="text-sm leading-relaxed text-text-muted">
+              Don't want to trust someone else's server with your Azure DevOps token? Fair. The whole thing is open
+              source and ships as a single self-hosted container — clone it and run your own instance:
+            </p>
+            <p class="mt-3">
+              <a href="https://github.com/jclement/azure-devops-mcp" class="font-mono text-sm text-accent hover:underline">
+                github.com/jclement/azure-devops-mcp
+              </a>
+            </p>
+          </Card>
+
           {!props.loggedIn ? (
             <div class="flex items-center gap-3 pt-2">
               <a href="/register" class="rounded-md bg-accent px-4 py-2 font-medium text-white hover:bg-accent-hover">
