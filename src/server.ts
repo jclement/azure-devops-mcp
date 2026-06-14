@@ -29,7 +29,7 @@ if (config.authReset) {
 
 if (config.masterKeyEphemeral) {
   log.warn(
-    "MASTER_KEY is unset — using a throwaway key. Stored PATs will NOT survive a restart. Set MASTER_KEY (openssl rand -base64 32) for persistence.",
+    'MASTER_KEY is unset — using the built-in "DEVELOPMENT" key (dev only, NOT secure). Set MASTER_KEY (openssl rand -base64 32) in production.',
   );
 }
 

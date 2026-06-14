@@ -10,6 +10,10 @@ const RECENT_EVENTS = 30;
 const LATENCY_SAMPLES = 500;
 const CALL_TIME_WINDOW_MS = 3_600_000; // keep 1h of call timestamps for rates
 
+// Day chart: 48 buckets of 30 minutes = the last 24 hours.
+const DAY_BUCKET_MS = 30 * 60_000;
+const DAY_BUCKETS = 48;
+
 export interface MetricEvent {
   /** seconds since epoch */
   ts: number;
@@ -24,6 +28,9 @@ export interface PersistedMetrics {
   spawnsTotal: number;
   perTool: Record<string, number>;
   startedAt: number;
+  /** 30-min call buckets for the 24h chart + the bucket index of the last slot. */
+  dayBuckets?: number[];
+  dayIdx?: number;
 }
 
 export interface Gauges {
@@ -41,7 +48,8 @@ export interface StatusSnapshot {
   errorRate: number;
   callsLastMin: number;
   callsLastHour: number;
-  /** per-second call counts for the last 60 seconds (oldest→newest) */
+  callsLastDay: number;
+  /** 30-minute call counts for the last 24 hours (oldest→newest) */
   spark: number[];
   latency: { p50: number; p95: number; count: number };
   spawns: { total: number; p50ms: number };
@@ -66,15 +74,35 @@ export class Metrics {
   private callTimes: number[] = []; // ms timestamps, pruned to last hour
   private recent: MetricEvent[] = [];
   private dashboards = 0;
+  private dayBuckets: number[] = new Array(DAY_BUCKETS).fill(0);
+  private dayIdx = Math.floor(Date.now() / DAY_BUCKET_MS);
   startedAt = Math.floor(Date.now() / 1000);
   /** Bumped on every recorded call; lets SSE skip pushing identical snapshots. */
   rev = 0;
+
+  /** Advance the day buckets to the current 30-min slot, zeroing elapsed ones. */
+  private rollDay(now: number) {
+    const cur = Math.floor(now / DAY_BUCKET_MS);
+    const diff = cur - this.dayIdx;
+    if (diff <= 0) return;
+    if (diff >= DAY_BUCKETS) {
+      this.dayBuckets.fill(0);
+    } else {
+      for (let k = 0; k < diff; k++) {
+        this.dayBuckets.shift();
+        this.dayBuckets.push(0);
+      }
+    }
+    this.dayIdx = cur;
+  }
 
   recordCall(tool: string, ms: number, ok: boolean) {
     const now = Date.now();
     this.callsTotal++;
     if (!ok) this.errorsTotal++;
     this.perTool.set(tool, (this.perTool.get(tool) ?? 0) + 1);
+    this.rollDay(now);
+    this.dayBuckets[DAY_BUCKETS - 1]!++;
 
     this.latency.push(ms);
     if (this.latency.length > LATENCY_SAMPLES) this.latency.shift();
@@ -111,6 +139,11 @@ export class Metrics {
     this.spawnsTotal = p.spawnsTotal ?? 0;
     if (p.startedAt) this.startedAt = p.startedAt;
     if (p.perTool) for (const [k, v] of Object.entries(p.perTool)) this.perTool.set(k, v);
+    if (Array.isArray(p.dayBuckets) && p.dayBuckets.length === DAY_BUCKETS && typeof p.dayIdx === "number") {
+      this.dayBuckets = [...p.dayBuckets];
+      this.dayIdx = p.dayIdx;
+      this.rollDay(Date.now()); // discard any slots that aged out while down
+    }
   }
 
   persisted(): PersistedMetrics {
@@ -120,6 +153,8 @@ export class Metrics {
       spawnsTotal: this.spawnsTotal,
       perTool: Object.fromEntries(this.perTool),
       startedAt: this.startedAt,
+      dayBuckets: this.dayBuckets,
+      dayIdx: this.dayIdx,
     };
   }
 
@@ -128,12 +163,10 @@ export class Metrics {
     const nowS = Math.floor(now / 1000);
     const lastMin = this.callTimes.filter((t) => t >= now - 60_000).length;
 
-    // 60 one-second buckets for the live sparkline
-    const spark = new Array(60).fill(0);
-    for (const t of this.callTimes) {
-      const age = Math.floor((now - t) / 1000);
-      if (age >= 0 && age < 60) spark[59 - age]++;
-    }
+    // 30-minute buckets over the last 24 hours
+    this.rollDay(now);
+    const spark = [...this.dayBuckets];
+    const callsLastDay = spark.reduce((a, b) => a + b, 0);
 
     const sortedLat = [...this.latency].sort((a, b) => a - b);
     const sortedSpawn = [...this.spawnMs].sort((a, b) => a - b);
@@ -150,6 +183,7 @@ export class Metrics {
       errorRate: this.callsTotal ? this.errorsTotal / this.callsTotal : 0,
       callsLastMin: lastMin,
       callsLastHour: this.callTimes.length,
+      callsLastDay,
       spark,
       latency: { p50: pct(sortedLat, 50), p95: pct(sortedLat, 95), count: this.latency.length },
       spawns: { total: this.spawnsTotal, p50ms: pct(sortedSpawn, 50) },

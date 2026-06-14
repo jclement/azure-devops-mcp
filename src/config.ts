@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 
 function int(name: string, def: number): number {
@@ -67,9 +67,9 @@ function loadMasterKey(env: NodeJS.ProcessEnv, production: boolean): { key: Buff
           "losing it makes every stored PAT unrecoverable.",
       );
     }
-    // Dev fallback: per-process throwaway key. PATs stored under it do not
-    // survive a restart with a different key — fine for local testing.
-    return { key: randomBytes(32), ephemeral: true };
+    // Dev fallback: a fixed, well-known key derived from "DEVELOPMENT" so PATs
+    // stored locally survive restarts. NEVER used in production (guarded above).
+    return { key: createHash("sha256").update("DEVELOPMENT").digest(), ephemeral: true };
   }
   let key: Buffer;
   // accept base64 or hex

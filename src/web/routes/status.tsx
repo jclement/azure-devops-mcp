@@ -21,14 +21,23 @@ export function statusRouter(db: Database, runtime: ProxyRuntime, metrics: Metri
 
   app.get("/json", (c) => c.json(snapshot(db, runtime, metrics)));
 
-  // Server-Sent Events: pushes an anonymous snapshot every 2s while connected.
+  // Server-Sent Events. A full snapshot is pushed every 5 minutes (the dashboard
+  // is intentionally low-frequency); a tiny "ping" keepalive every 25s prevents
+  // idle proxies/load-balancers from dropping the connection.
+  const SNAPSHOT_EVERY = 12; // 12 × 25s = 5 min
   app.get("/stream", (c) =>
     streamSSE(c, async (stream) => {
       metrics.addDashboard();
       try {
+        let i = 0;
         while (!stream.aborted) {
-          await stream.writeSSE({ data: JSON.stringify(snapshot(db, runtime, metrics)) });
-          await stream.sleep(2000);
+          if (i % SNAPSHOT_EVERY === 0) {
+            await stream.writeSSE({ data: JSON.stringify(snapshot(db, runtime, metrics)) });
+          } else {
+            await stream.writeSSE({ event: "ping", data: "1" });
+          }
+          i++;
+          await stream.sleep(25_000);
         }
       } finally {
         metrics.removeDashboard();
@@ -66,7 +75,7 @@ export function StatusLanding(props: { snap: StatusSnapshot }) {
               </div>
             </div>
             <div class="flex items-center gap-3 text-sm">
-              <span class="live-dot" /> <span id="liveLabel" class="text-text-muted">live</span>
+              <span class="live-dot" /> <span id="liveLabel" class="text-text-muted">updates every 5m</span>
               <a href="/login" class="rounded-md border border-base-600 px-3 py-1.5 hover:bg-base-800">Sign in</a>
               <a href="/register" class="rounded-md bg-accent px-3 py-1.5 font-medium text-white hover:bg-accent-hover">Get started</a>
             </div>
@@ -74,14 +83,14 @@ export function StatusLanding(props: { snap: StatusSnapshot }) {
 
           <section class="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
             <Hero id="callsTotal" label="Tool calls (lifetime)" value={fmt(s.callsTotal)} />
-            <Hero id="callsLastMin" label="Calls / min" value={fmt(s.callsLastMin)} accent />
+            <Hero id="callsLastDay" label="Calls (24h)" value={fmt(s.callsLastDay)} accent />
             <Hero id="p95" label="p95 latency" value={`${s.latency.p95}ms`} />
             <Hero id="errorRate" label="Error rate" value={pctStr(s.errorRate)} />
           </section>
 
           <section class="mb-8 rounded-xl border border-base-700 bg-base-900/70 p-5">
             <div class="mb-3 flex items-center justify-between">
-              <h2 class="text-sm font-semibold text-text-muted">Calls — last 60 seconds</h2>
+              <h2 class="text-sm font-semibold text-text-muted">Calls — last 24 hours</h2>
               <span class="text-xs text-text-muted">p50 <span id="p50">{s.latency.p50}</span>ms · last hour <span id="callsLastHour">{fmt(s.callsLastHour)}</span></span>
             </div>
             <div id="spark" class="spark">
@@ -195,7 +204,7 @@ const SCRIPT = `
   function set(id,v){var el=$(id);if(el&&el.textContent!==String(v)){el.textContent=v;el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}}
   function uptime(s){return s<60?s+'s':s<3600?Math.floor(s/60)+'m':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d'}
   function render(s){
-    set('callsTotal',fmt(s.callsTotal));set('callsLastMin',fmt(s.callsLastMin));
+    set('callsTotal',fmt(s.callsTotal));set('callsLastDay',fmt(s.callsLastDay));
     set('p95',s.latency.p95+'ms');set('errorRate',(s.errorRate*100).toFixed(s.errorRate<0.1?1:0)+'%');
     set('p50',s.latency.p50);set('callsLastHour',fmt(s.callsLastHour));set('spawnP50',s.spawns.p50ms);
     set('uptime',uptime(s.uptimeS));
