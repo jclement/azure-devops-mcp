@@ -23,6 +23,9 @@ function LoginPage(props: { returnTo: string }) {
         <p class="mt-6 text-sm text-text-muted">
           No account yet? <a href="/register" class="text-accent hover:underline">Create one</a>.
         </p>
+        <p class="mt-3 text-xs text-text-muted">
+          <a href="/privacy" class="hover:underline">Privacy &amp; disclaimer</a>
+        </p>
       </div>
       <script src="/assets/vendor/simplewebauthn-browser.min.js"></script>
       <script src="/assets/auth-client.js"></script>

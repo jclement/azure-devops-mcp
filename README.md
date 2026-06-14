@@ -100,16 +100,18 @@ Single container. Put it behind a TLS-terminating proxy/tunnel that sets
 | `PORT` | `3000` | Listen port |
 | `ADO_MCP_VERSION` | `latest` | Upstream `@azure-devops/mcp` version to spawn |
 | `ADO_MCP_DIST_TAG` | `latest` | npm dist-tag the updater tracks |
-| `ADO_MCP_AUTO_UPDATE` | `0` | Auto-adopt newer upstream versions and recycle children |
+| `ADO_MCP_AUTO_UPDATE` | `1` | Auto-adopt newer upstream versions and recycle children |
+| `UPDATE_CHECK_INTERVAL_MS` | `7200000` | How often to poll npm for a newer upstream (2h) |
 | `CHILD_IDLE_MS` | `600000` | Reap idle upstream children after this |
 | `AUTH_RESET` | `0` | Wipe all passkeys + sessions on boot |
 
 ## Upstream auto-update
 
-A background checker polls npm for `@azure-devops/mcp` and surfaces "update
-available" on the dashboard; one click adopts it and recycles all children onto
-the new version. With `ADO_MCP_AUTO_UPDATE=1` it adopts automatically
-(`src/updater.ts`).
+A background checker polls npm for `@azure-devops/mcp` every couple of hours and,
+by default, adopts any newer version automatically — recycling all children onto
+it. There's no user action: this is a multi-user service, so upgrades just happen
+(`src/updater.ts`). Pin a version with `ADO_MCP_VERSION` or set
+`ADO_MCP_AUTO_UPDATE=0` to disable automatic adoption.
 
 ## Development
 

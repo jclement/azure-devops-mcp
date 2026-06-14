@@ -25,8 +25,9 @@ services:
       # Optionally hard-pin the public origin instead of deriving from proxy headers:
       # PUBLIC_URL: "https://ado-mcp.example.com"
       #
-      # Auto-adopt newer @azure-devops/mcp versions as they ship (needs npm access):
-      ADO_MCP_AUTO_UPDATE: "0"
+      # Newer @azure-devops/mcp versions are auto-adopted in the background by
+      # default (needs npm access). Set to "0" to pin the running version instead.
+      ADO_MCP_AUTO_UPDATE: "1"
       ADO_MCP_DIST_TAG: "latest"
     volumes:
       - ado-mcp-data:/data

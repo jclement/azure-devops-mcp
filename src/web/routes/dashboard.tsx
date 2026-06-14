@@ -7,9 +7,7 @@ import { listConnections } from "../../connections/store.ts";
 import { listApiTokens } from "../../auth/tokens.ts";
 import { listUserOAuthClients } from "../../oauth/router.ts";
 import { getUser } from "../../auth/webauthn.ts";
-import { adoptVersion, upstreamStatus } from "../../updater.ts";
-import type { ProxyRuntime } from "../../mcp/runtime.ts";
-import { recordAdmin } from "../../audit.ts";
+import { upstreamStatus } from "../../updater.ts";
 
 function Stat(props: { label: string; value: string | number; href: string }) {
   return (
@@ -20,7 +18,7 @@ function Stat(props: { label: string; value: string | number; href: string }) {
   );
 }
 
-export function dashboardRouter(db: Database, config: Config, runtime: ProxyRuntime): Hono<AuthEnv> {
+export function dashboardRouter(db: Database, config: Config): Hono<AuthEnv> {
   const app = new Hono<AuthEnv>();
 
   app.get("/", (c) => {
@@ -34,17 +32,6 @@ export function dashboardRouter(db: Database, config: Config, runtime: ProxyRunt
       <Layout title="Dashboard" activeNav="/app" userName={user?.display_name}>
         <div class="space-y-6">
           <h1 class="text-xl font-semibold">Welcome{user ? `, ${user.display_name}` : ""}</h1>
-          {up.updateAvailable ? (
-            <div class="flex items-center justify-between rounded-lg border border-warning/40 bg-base-900 p-4 text-sm">
-              <span>
-                A newer Azure DevOps MCP is available: <span class="font-mono">{up.adopted}</span> →{" "}
-                <span class="font-mono text-warning">{up.latest}</span>
-              </span>
-              <button hx-post="/app/upstream/adopt" hx-swap="none" hx-confirm="Adopt the new version and restart all upstream children?" class="rounded-md bg-accent px-3 py-1.5 font-medium text-white hover:bg-accent-hover">
-                Update now
-              </button>
-            </div>
-          ) : null}
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Stat label="Connections" value={conns.length} href="/app/connections" />
             <Stat label="API tokens" value={tokens.length} href="/app/tokens" />
@@ -60,23 +47,16 @@ export function dashboardRouter(db: Database, config: Config, runtime: ProxyRunt
             <p class="text-sm text-text-muted">
               Microsoft <span class="font-mono">@azure-devops/mcp</span> — running <span class="font-mono">{up.adopted}</span>
               {up.latest ? <> · latest <span class="font-mono">{up.latest}</span> (checked {ago(up.checkedAt)})</> : <> · not yet checked</>}
-              {config.adoMcpAutoUpdate ? " · auto-update on" : ""}
+            </p>
+            <p class="mt-1 text-xs text-text-muted">
+              {config.adoMcpAutoUpdate
+                ? "New versions are adopted automatically in the background — nothing to do."
+                : "Auto-update is disabled; the running version is pinned."}
             </p>
           </Card>
         </div>
       </Layout>,
     );
-  });
-
-  app.post("/upstream/adopt", async (c) => {
-    const userId = c.var.session!.user_id;
-    const up = upstreamStatus(db, config);
-    if (up.latest && up.updateAvailable) {
-      await adoptVersion(db, up.latest, runtime.supervisor);
-      recordAdmin(db, userId, "upstream.adopt", { detail: up.latest });
-    }
-    c.header("HX-Refresh", "true");
-    return c.body(null, 200);
   });
 
   return app;

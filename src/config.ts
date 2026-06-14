@@ -42,7 +42,7 @@ export interface Config {
 
   /** Default pinned version of Microsoft's @azure-devops/mcp to spawn. */
   adoMcpVersion: string;
-  /** When true, the updater adopts new upstream versions automatically. */
+  /** When true (default), the updater adopts new upstream versions automatically. */
   adoMcpAutoUpdate: boolean;
   /** npm dist-tag to track for updates ("latest" or "next"). */
   adoMcpDistTag: string;
@@ -122,9 +122,9 @@ export function loadConfig(env = process.env): Config {
     masterKey,
     masterKeyEphemeral: ephemeral,
     adoMcpVersion: env.ADO_MCP_VERSION ?? "latest",
-    adoMcpAutoUpdate: bool("ADO_MCP_AUTO_UPDATE", false),
+    adoMcpAutoUpdate: bool("ADO_MCP_AUTO_UPDATE", true),
     adoMcpDistTag: env.ADO_MCP_DIST_TAG ?? "latest",
-    updateCheckIntervalMs: int("UPDATE_CHECK_INTERVAL_MS", 6 * 3600_000),
+    updateCheckIntervalMs: int("UPDATE_CHECK_INTERVAL_MS", 2 * 3600_000),
     childIdleMs: int("CHILD_IDLE_MS", 10 * 60_000),
     childKillGraceMs: int("CHILD_KILL_GRACE_MS", 5000),
     authReset: bool("AUTH_RESET", false),

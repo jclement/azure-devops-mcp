@@ -28,6 +28,7 @@ import { clientsRouter } from "./web/routes/clients.tsx";
 import { activityRouter } from "./web/routes/activity.tsx";
 import { accountRouter } from "./web/routes/account.tsx";
 import { StatusLanding, statusRouter, snapshot } from "./web/routes/status.tsx";
+import { PrivacyPage } from "./web/routes/privacy.tsx";
 import { recordMcpCall } from "./audit.ts";
 import type { Metrics } from "./metrics.ts";
 
@@ -61,6 +62,7 @@ export function createApp(deps: AppDeps) {
   app.use("/status/*", rateLimit("status", 60));
   app.route("/status", statusRouter(db, runtime, metrics));
   app.get("/", (c) => c.html(<StatusLanding snap={snapshot(db, runtime, metrics)} />));
+  app.get("/privacy", (c) => c.html(<PrivacyPage />));
 
   // --- OAuth metadata + public endpoints ---
   app.route("/.well-known", wellKnownRouter());
@@ -122,7 +124,7 @@ export function createApp(deps: AppDeps) {
   app.route("/app/clients", clientsRouter(db));
   app.route("/app/activity", activityRouter(db));
   app.route("/app/account", accountRouter(db));
-  app.route("/app", dashboardRouter(db, config, runtime));
+  app.route("/app", dashboardRouter(db, config));
 
   return app;
 }

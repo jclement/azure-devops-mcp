@@ -52,6 +52,10 @@ function RegisterPage() {
           </button>
           <p id="register-status" class="hidden text-sm text-text-muted"></p>
         </form>
+        <p class="mt-6 text-xs text-text-muted">
+          This is a personal, best-effort project — no legal guarantee is made about the safety of stored
+          credentials. See the <a href="/privacy" class="text-accent hover:underline">privacy &amp; disclaimer</a>.
+        </p>
       </div>
       <script src="/assets/vendor/simplewebauthn-browser.min.js"></script>
       <script src="/assets/auth-client.js"></script>

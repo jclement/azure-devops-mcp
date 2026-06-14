@@ -128,6 +128,8 @@ export function StatusLanding(props: { snap: StatusSnapshot }) {
 
           <footer class="mt-10 text-center text-xs text-text-muted">
             Aggregate, anonymous metrics across all accounts. No organizations, identities, or credentials are shown.
+            <br />
+            A personal project by <a href="https://owg.me" class="text-accent hover:underline">the OneWheelGeek</a> · <a href="/privacy" class="text-accent hover:underline">Privacy &amp; disclaimer</a>
           </footer>
         </div>
 
