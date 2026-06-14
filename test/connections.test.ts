@@ -35,9 +35,20 @@ describe("connections store", () => {
 
   test("derives a slug and rejects duplicates per user", () => {
     const a = createTestUser(db, "A");
-    createConnection(db, key, a, { org: "Contoso Org", pat: "x" });
+    createConnection(db, key, a, { org: "Contoso-Org", pat: "x" });
     expect(listConnections(db, a)[0]!.slug).toBe("contoso-org");
-    expect(() => createConnection(db, key, a, { org: "Contoso Org", pat: "y" })).toThrow(ConnectionError);
+    expect(() => createConnection(db, key, a, { org: "Contoso-Org", pat: "y" })).toThrow(ConnectionError);
+  });
+
+  test("rejects an org that could be mistaken for a CLI flag, and bad domains", () => {
+    const a = createTestUser(db, "A");
+    expect(() => createConnection(db, key, a, { org: "--authentication", pat: "x" })).toThrow(ConnectionError);
+    expect(() => createConnection(db, key, a, { org: "bad org!", pat: "x" })).toThrow(ConnectionError);
+    expect(() => createConnection(db, key, a, { org: "contoso", pat: "x", domains: "work items; rm -rf" })).toThrow(
+      ConnectionError,
+    );
+    // valid org + valid domains is accepted
+    expect(() => createConnection(db, key, a, { org: "contoso", pat: "x", domains: "repos,work-items" })).not.toThrow();
   });
 
   test("same slug allowed across different users", () => {

@@ -47,11 +47,25 @@ export class ConnectionError extends Error {
   }
 }
 
+// Azure DevOps org names: start alphanumeric, then alphanumerics/hyphens. We
+// validate at the write boundary so the value can never be mistaken for a CLI
+// flag when it becomes a positional argv element of the upstream child.
+const ORG_RE = /^[A-Za-z0-9][A-Za-z0-9-]{0,62}$/;
+// Toolset/domain filter: comma-separated bare identifiers only.
+const DOMAINS_RE = /^[A-Za-z0-9_-]+(,[A-Za-z0-9_-]+)*$/;
+
 export function createConnection(db: Database, key: Buffer, userId: number, input: NewConnection): ConnectionRow {
   const org = input.org.trim();
   if (!org) throw new ConnectionError("INVALID_ORG", "Organization is required.");
+  if (!ORG_RE.test(org)) {
+    throw new ConnectionError("INVALID_ORG", "Organization must be alphanumeric/hyphens and start with a letter or digit.");
+  }
   const pat = input.pat.trim();
   if (!pat) throw new ConnectionError("INVALID_PAT", "Personal Access Token is required.");
+  const domains = input.domains?.trim() || null;
+  if (domains && !DOMAINS_RE.test(domains)) {
+    throw new ConnectionError("INVALID_DOMAINS", "Toolset filter must be comma-separated identifiers (letters, digits, _ or -).");
+  }
   const slug = slugify(input.slug?.trim() || org);
   if (!slug) throw new ConnectionError("INVALID_SLUG", "Could not derive a slug — provide one explicitly.");
 
@@ -75,7 +89,7 @@ export function createConnection(db: Database, key: Buffer, userId: number, inpu
     sealed.nonce,
     sealed.tag,
     patLast4(pat),
-    input.domains?.trim() || null,
+    domains,
   );
   return getConnection(db, userId, id)!;
 }

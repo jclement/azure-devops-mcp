@@ -25,9 +25,11 @@ export function statusRouter(db: Database, runtime: ProxyRuntime, metrics: Metri
   // is intentionally low-frequency); a tiny "ping" keepalive every 25s prevents
   // idle proxies/load-balancers from dropping the connection.
   const SNAPSHOT_EVERY = 12; // 12 × 25s = 5 min
-  app.get("/stream", (c) =>
-    streamSSE(c, async (stream) => {
-      metrics.addDashboard();
+  const MAX_STREAMS = 200;
+  app.get("/stream", (c) => {
+    // bound concurrent unauthenticated SSE streams (DoS / gauge-inflation guard)
+    if (!metrics.tryAddDashboard(MAX_STREAMS)) return c.text("Too many viewers, try again shortly.", 503);
+    return streamSSE(c, async (stream) => {
       try {
         let i = 0;
         while (!stream.aborted) {
@@ -42,8 +44,8 @@ export function statusRouter(db: Database, runtime: ProxyRuntime, metrics: Metri
       } finally {
         metrics.removeDashboard();
       }
-    }),
-  );
+    });
+  });
 
   return app;
 }

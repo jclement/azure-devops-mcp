@@ -122,8 +122,11 @@ export class Metrics {
     if (this.spawnMs.length > LATENCY_SAMPLES) this.spawnMs.shift();
   }
 
-  addDashboard() {
+  /** Try to register a status-page viewer; false if the concurrency cap is hit. */
+  tryAddDashboard(max = 200): boolean {
+    if (this.dashboards >= max) return false;
     this.dashboards++;
+    return true;
   }
   removeDashboard() {
     this.dashboards = Math.max(0, this.dashboards - 1);

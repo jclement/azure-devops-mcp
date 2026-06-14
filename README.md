@@ -60,9 +60,10 @@ bun install
 mise run dev   # http://localhost:3000
 ```
 
-Dev uses a built-in `"DEVELOPMENT"` master key if `MASTER_KEY` is unset, so locally
-stored PATs survive restarts. **Production requires a real `MASTER_KEY`** (the
-server refuses to boot without one when `NODE_ENV=production`).
+`mise run dev` sets `ALLOW_DEV_MASTER_KEY=1`, which opts into a built-in
+`"DEVELOPMENT"` key so locally stored PATs survive restarts. **Any deployment
+without `MASTER_KEY` and without that explicit flag refuses to boot** — so a
+misconfigured server can never silently encrypt real PATs with the public dev key.
 
 Open `/register`, create a passkey, then add a connection (org + PAT) on the
 Connections page. Create an API token on the Tokens page and point a client at it:
@@ -90,7 +91,8 @@ Single container. Put it behind a TLS-terminating proxy/tunnel that sets
 
 | Env | Default | Purpose |
 |---|---|---|
-| `MASTER_KEY` | (required in prod) | 32-byte base64/hex key; encrypts PATs at rest |
+| `MASTER_KEY` | (required) | 32-byte base64/hex key; encrypts PATs at rest. Required unless `ALLOW_DEV_MASTER_KEY=1` |
+| `ALLOW_DEV_MASTER_KEY` | `0` | Local dev only: opt into the built-in insecure key when `MASTER_KEY` is unset |
 | `PUBLIC_URL` | unset (derive from proxy) | Hard-pin the public origin/rpID |
 | `PORT` | `3000` | Listen port |
 | `ADO_MCP_VERSION` | `latest` | Upstream `@azure-devops/mcp` version to spawn |

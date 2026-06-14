@@ -58,17 +58,21 @@ export interface Config {
   authReset: boolean;
 }
 
-function loadMasterKey(env: NodeJS.ProcessEnv, production: boolean): { key: Buffer; ephemeral: boolean } {
+function loadMasterKey(env: NodeJS.ProcessEnv): { key: Buffer; ephemeral: boolean } {
   const raw = env.MASTER_KEY;
   if (!raw) {
-    if (production) {
+    // The dev key is a fixed, source-baked value — anyone with the DB could
+    // decrypt PATs sealed under it. So it requires an EXPLICIT opt-in, never
+    // NODE_ENV inference: `mise run dev` sets ALLOW_DEV_MASTER_KEY=1, but any
+    // other deployment that forgets MASTER_KEY hard-fails instead of silently
+    // encrypting real PATs with a public key.
+    const allowDev = env.ALLOW_DEV_MASTER_KEY === "1" || env.ALLOW_DEV_MASTER_KEY?.toLowerCase() === "true";
+    if (!allowDev) {
       throw new Error(
-        "MASTER_KEY is required in production. Generate one with: openssl rand -base64 32 — and back it up; " +
-          "losing it makes every stored PAT unrecoverable.",
+        "MASTER_KEY is required. Generate one with: openssl rand -base64 32 — and back it up; losing it makes " +
+          "every stored PAT unrecoverable. For LOCAL DEV ONLY, set ALLOW_DEV_MASTER_KEY=1 to use a built-in insecure key.",
       );
     }
-    // Dev fallback: a fixed, well-known key derived from "DEVELOPMENT" so PATs
-    // stored locally survive restarts. NEVER used in production (guarded above).
     return { key: createHash("sha256").update("DEVELOPMENT").digest(), ephemeral: true };
   }
   let key: Buffer;
@@ -104,7 +108,7 @@ export function loadConfig(env = process.env): Config {
 
   const derived = publicUrl === null;
   const dataDir = env.DATA_DIR ?? "./data";
-  const { key: masterKey, ephemeral } = loadMasterKey(env, production);
+  const { key: masterKey, ephemeral } = loadMasterKey(env);
 
   return {
     port,

@@ -71,8 +71,15 @@ export class ChildSupervisor {
     transport.onerror = (err) => log.warn(`child ${connId} transport error: ${err.message}`);
 
     await client.connect(transport);
-    // surface child stderr at debug level for troubleshooting
-    transport.stderr?.on("data", (b: Buffer) => log.debug(`child ${connId} stderr: ${b.toString().trimEnd()}`));
+    // surface child stderr at debug level, but redact secrets first: the child's
+    // own PERSONAL_ACCESS_TOKEN literal and any Authorization/Basic header runs.
+    const secret = spec.env.PERSONAL_ACCESS_TOKEN;
+    transport.stderr?.on("data", (b: Buffer) => {
+      let line = b.toString().trimEnd();
+      if (secret) line = line.split(secret).join("***");
+      line = line.replace(/((?:authorization|x-tfs-fedauthredirect)\s*[:=]\s*|basic |bearer )\S+/gi, "$1***");
+      log.debug(`child ${connId} stderr: ${line}`);
+    });
 
     this.entries.set(connId, { client, transport, fingerprint, lastUsed: Date.now() });
     this.onSpawn?.(Date.now() - startedAt);

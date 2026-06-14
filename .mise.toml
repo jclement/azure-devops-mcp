@@ -6,6 +6,10 @@ node = "24.16.0"
 
 [env]
 DATA_DIR = "{{config_root}}/data"
+# Local dev only: opt in to the built-in insecure master key so PATs persist
+# without setting MASTER_KEY. NEVER set this in a real deployment — without it,
+# a server missing MASTER_KEY hard-fails instead of using a public key.
+ALLOW_DEV_MASTER_KEY = "1"
 # PUBLIC_URL intentionally unset: dev runs in proxy-derived mode, matching
 # production. Set it only to hard-pin the public origin.
 

@@ -58,6 +58,7 @@ export function createApp(deps: AppDeps) {
   app.use("/assets/*", serveStatic({ root: "./public", rewriteRequestPath: (p) => p.replace(/^\/assets/, "") }));
 
   // --- Public live status (no auth; aggregate + anonymous) ---
+  app.use("/status/*", rateLimit("status", 60));
   app.route("/status", statusRouter(db, runtime, metrics));
   app.get("/", (c) => c.html(<StatusLanding snap={snapshot(db, runtime, metrics)} />));
 
