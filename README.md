@@ -42,6 +42,17 @@ agent ──Bearer──▶ /mcp ──(user-scoped proxy)──▶ child(orgA, 
 - `test/isolation.integration.test.ts` boots the app with two users and proves a
   user can't list or call another user's tools, even by guessing the slug.
 
+## Live status wall
+
+The root path `/` is a public, no-auth dashboard showing **aggregate, anonymous**
+activity across all accounts: lifetime tool calls, calls/min, p50/p95 latency,
+error rate, a 60-second sparkline, active upstream children, and a live feed of
+recent calls (generic upstream tool names only — never users, orgs, slugs, args,
+or PATs). It updates over SSE (`/status/stream`); `/status/json` is the snapshot.
+
+Counters live in memory (`src/metrics.ts`), flush to the DB every 30s (lifetime
+totals survive restarts), and push to connected browsers every 2s.
+
 ## Quick start (dev)
 
 ```sh

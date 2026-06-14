@@ -6,6 +6,7 @@ import { openDatabase } from "../src/db/index.ts";
 import { ChildSupervisor } from "../src/mcp/supervisor.ts";
 import type { ProxyRuntime } from "../src/mcp/runtime.ts";
 import type { SpawnFactory } from "../src/mcp/upstream.ts";
+import { Metrics } from "../src/metrics.ts";
 import { createApp } from "../src/app.tsx";
 
 const FAKE = join(import.meta.dir, "fake-ado-mcp.ts");
@@ -38,6 +39,7 @@ export interface TestApp {
   config: Config;
   supervisor: ChildSupervisor;
   runtime: ProxyRuntime;
+  metrics: Metrics;
   server: ReturnType<typeof Bun.serve>;
   baseUrl: string;
   close(): Promise<void>;
@@ -46,20 +48,22 @@ export interface TestApp {
 export async function bootTestApp(): Promise<TestApp> {
   const config = testConfig();
   const db = openDatabase(":memory:");
-  const supervisor = new ChildSupervisor(config.childKillGraceMs);
+  const metrics = new Metrics();
+  const supervisor = new ChildSupervisor(config.childKillGraceMs, (ms) => metrics.recordSpawn(ms));
   const runtime: ProxyRuntime = {
     supervisor,
     masterKey: config.masterKey,
     upstreamVersion: () => "test",
     spawnFactory: fakeSpawnFactory(),
   };
-  const app = createApp({ config, db, runtime });
+  const app = createApp({ config, db, runtime, metrics });
   const server = Bun.serve({ port: 0, fetch: app.fetch, idleTimeout: 30 });
   return {
     db,
     config,
     supervisor,
     runtime,
+    metrics,
     server,
     baseUrl: `http://localhost:${server.port}`,
     close: async () => {

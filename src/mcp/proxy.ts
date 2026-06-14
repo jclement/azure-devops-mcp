@@ -43,8 +43,8 @@ export interface ProxyDeps {
   masterKey: Buffer;
   upstreamVersion: () => string;
   principal: AuthPrincipal;
-  /** Audit hook: connection slug (null for native tools), upstream tool name, args, result. */
-  onCall?: (connection: string | null, tool: string, args: Record<string, unknown>, result: CallToolResult) => void;
+  /** Audit/metrics hook: connection slug (null for native tools), upstream tool name, args, result, duration. */
+  onCall?: (connection: string | null, tool: string, args: Record<string, unknown>, result: CallToolResult, ms: number) => void;
 }
 
 function splitName(qualified: string): { slug: string; name: string } | null {
@@ -128,34 +128,38 @@ export function createProxyServer(deps: ProxyDeps): Server {
   server.setRequestHandler(CallToolRequestSchema, async (req): Promise<CallToolResult> => {
     const fullName = req.params.name;
     const args = (req.params.arguments ?? {}) as Record<string, unknown>;
+    const started = Date.now();
+    const elapsed = () => Date.now() - started;
 
     if (fullName === "list_connections") {
       const result = ok(listConnections(db, userId).map((c) => ({ slug: c.slug, organization: c.org })));
-      deps.onCall?.(null, fullName, args, result);
+      deps.onCall?.(null, fullName, args, result, elapsed());
       return result;
     }
 
     const parsed = splitName(fullName);
     if (!parsed) {
-      return fail("INVALID_TOOL", `Tool '${fullName}' is not namespaced. Use '<slug>__<tool>'; call list_connections.`);
+      const result = fail("INVALID_TOOL", `Tool '${fullName}' is not namespaced. Use '<slug>__<tool>'; call list_connections.`);
+      deps.onCall?.(null, fullName, args, result, elapsed());
+      return result;
     }
     // Tenant-isolation chokepoint: the slug is resolved ONLY among this user's
     // connections. A slug belonging to another user simply isn't found here.
     const conn = getConnectionBySlug(db, userId, parsed.slug);
     if (!conn) {
       const result = fail("UNKNOWN_CONNECTION", `No connection '${parsed.slug}'. Call list_connections to see yours.`);
-      deps.onCall?.(parsed.slug, parsed.name, args, result);
+      deps.onCall?.(parsed.slug, parsed.name, args, result, elapsed());
       return result;
     }
 
     try {
       const client = await clientFor(conn);
       const result = (await client.callTool({ name: parsed.name, arguments: args })) as CallToolResult;
-      deps.onCall?.(conn.slug, parsed.name, args, result);
+      deps.onCall?.(conn.slug, parsed.name, args, result, elapsed());
       return result;
     } catch (err) {
       const result = fail("UPSTREAM_ERROR", err instanceof Error ? err.message : String(err));
-      deps.onCall?.(conn.slug, parsed.name, args, result);
+      deps.onCall?.(conn.slug, parsed.name, args, result, elapsed());
       return result;
     }
   });

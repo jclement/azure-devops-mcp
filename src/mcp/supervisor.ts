@@ -27,7 +27,10 @@ export class ChildSupervisor {
   private starting = new Map<string, Promise<Client>>();
   private shuttingDown = false;
 
-  constructor(private killGraceMs: number) {}
+  constructor(
+    private killGraceMs: number,
+    private onSpawn?: (ms: number) => void,
+  ) {}
 
   /** Get (or spawn) the live MCP client for a connection. */
   async acquire(connId: string, fingerprint: string, spec: SpawnSpec): Promise<Client> {
@@ -52,6 +55,7 @@ export class ChildSupervisor {
   }
 
   private async spawn(connId: string, fingerprint: string, spec: SpawnSpec): Promise<Client> {
+    const startedAt = Date.now();
     const transport = new StdioClientTransport({
       command: spec.command,
       args: spec.args,
@@ -71,6 +75,7 @@ export class ChildSupervisor {
     transport.stderr?.on("data", (b: Buffer) => log.debug(`child ${connId} stderr: ${b.toString().trimEnd()}`));
 
     this.entries.set(connId, { client, transport, fingerprint, lastUsed: Date.now() });
+    this.onSpawn?.(Date.now() - startedAt);
     log.info(`spawned upstream child for connection ${connId}`);
     return client;
   }

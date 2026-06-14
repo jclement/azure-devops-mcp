@@ -27,18 +27,21 @@ import { tokensRouter } from "./web/routes/tokens.tsx";
 import { clientsRouter } from "./web/routes/clients.tsx";
 import { activityRouter } from "./web/routes/activity.tsx";
 import { accountRouter } from "./web/routes/account.tsx";
+import { StatusLanding, statusRouter, snapshot } from "./web/routes/status.tsx";
 import { recordMcpCall } from "./audit.ts";
+import type { Metrics } from "./metrics.ts";
 
 export interface AppDeps {
   config: Config;
   db: Database;
   runtime: ProxyRuntime;
+  metrics: Metrics;
 }
 
 export type AppEnv = AuthEnv & { Variables: AuthEnv["Variables"] & { deps: AppDeps } };
 
 export function createApp(deps: AppDeps) {
-  const { config, db, runtime } = deps;
+  const { config, db, runtime, metrics } = deps;
   const app = new Hono<AppEnv>();
 
   app.use("*", async (c, next) => {
@@ -53,6 +56,10 @@ export function createApp(deps: AppDeps) {
 
   app.get("/healthz", (c) => c.json({ ok: true }));
   app.use("/assets/*", serveStatic({ root: "./public", rewriteRequestPath: (p) => p.replace(/^\/assets/, "") }));
+
+  // --- Public live status (no auth; aggregate + anonymous) ---
+  app.route("/status", statusRouter(db, runtime, metrics));
+  app.get("/", (c) => c.html(<StatusLanding snap={snapshot(db, runtime, metrics)} />));
 
   // --- OAuth metadata + public endpoints ---
   app.route("/.well-known", wellKnownRouter());
@@ -85,7 +92,7 @@ export function createApp(deps: AppDeps) {
       masterKey: runtime.masterKey,
       upstreamVersion: runtime.upstreamVersion,
       principal,
-      onCall: (connection, tool, args, result) =>
+      onCall: (connection, tool, args, result, ms) => {
         recordMcpCall(
           db,
           principal,
@@ -94,7 +101,9 @@ export function createApp(deps: AppDeps) {
           args,
           result.isError ? "error" : "ok",
           result.isError ? firstText(result) : undefined,
-        ),
+        );
+        metrics.recordCall(tool, ms, !result.isError);
+      },
     });
     await server.connect(transport);
     // revoking the token kills any live SSE stream for it immediately
@@ -113,8 +122,6 @@ export function createApp(deps: AppDeps) {
   app.route("/app/activity", activityRouter(db));
   app.route("/app/account", accountRouter(db));
   app.route("/app", dashboardRouter(db, config, runtime));
-
-  app.get("/", (c) => c.redirect("/app"));
 
   return app;
 }

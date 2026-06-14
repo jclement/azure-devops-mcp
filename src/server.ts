@@ -1,8 +1,9 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "./config.ts";
-import { openDatabase } from "./db/index.ts";
+import { openDatabase, getSetting, setSetting } from "./db/index.ts";
 import { createApp } from "./app.tsx";
+import { Metrics } from "./metrics.ts";
 import { sweepExpired } from "./auth/sessions.ts";
 import { pruneAudit } from "./audit.ts";
 import { ChildSupervisor } from "./mcp/supervisor.ts";
@@ -32,9 +33,21 @@ if (config.masterKeyEphemeral) {
   );
 }
 
+// --- metrics (anonymous, for the public status page) ------------------------
+
+const METRICS_KEY = "metrics_snapshot";
+const metrics = new Metrics();
+try {
+  const raw = getSetting(db, METRICS_KEY);
+  if (raw) metrics.load(JSON.parse(raw));
+} catch (err) {
+  log.warn(`could not load persisted metrics: ${err instanceof Error ? err.message : err}`);
+}
+const flushMetrics = () => setSetting(db, METRICS_KEY, JSON.stringify(metrics.persisted()));
+
 // --- upstream child supervision ---------------------------------------------
 
-const supervisor = new ChildSupervisor(config.childKillGraceMs);
+const supervisor = new ChildSupervisor(config.childKillGraceMs, (ms) => metrics.recordSpawn(ms));
 const runtime: ProxyRuntime = {
   supervisor,
   masterKey: config.masterKey,
@@ -51,13 +64,16 @@ setInterval(() => {
 }, 3_600_000);
 sweepExpired(db);
 
+// flush live metrics to disk so lifetime totals survive restarts
+setInterval(flushMetrics, 30_000);
+
 // npm update check (best-effort; logs and surfaces in the UI)
 void checkForUpdate(db, config, supervisor);
 setInterval(() => void checkForUpdate(db, config, supervisor), config.updateCheckIntervalMs);
 
 // --- HTTP --------------------------------------------------------------------
 
-const app = createApp({ config, db, runtime });
+const app = createApp({ config, db, runtime, metrics });
 
 const server = Bun.serve({
   port: config.port,
@@ -77,6 +93,7 @@ async function shutdown(signal: string) {
   log.info(`${signal} received, shutting down`);
   await server.stop();
   await supervisor.shutdown(); // SIGTERM all Microsoft MCP children
+  flushMetrics();
   db.close();
   process.exit(0);
 }
