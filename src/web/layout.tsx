@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   ["/app/clients", "Clients"],
   ["/app/activity", "Activity"],
   ["/app/account", "Account"],
+  ["/help", "Help"],
 ] as const;
 
 function Nav(props: { active?: string; userName?: string }) {

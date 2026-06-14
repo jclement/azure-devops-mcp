@@ -54,7 +54,8 @@ function RegisterPage() {
         </form>
         <p class="mt-6 text-xs text-text-muted">
           This is a personal, best-effort project — no legal guarantee is made about the safety of stored
-          credentials. See the <a href="/privacy" class="text-accent hover:underline">privacy &amp; disclaimer</a>.
+          credentials. New here? <a href="/help" class="text-accent hover:underline">What is this?</a> · See the{" "}
+          <a href="/privacy" class="text-accent hover:underline">privacy &amp; disclaimer</a>.
         </p>
       </div>
       <script src="/assets/vendor/simplewebauthn-browser.min.js"></script>

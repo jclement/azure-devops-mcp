@@ -78,6 +78,7 @@ export function StatusLanding(props: { snap: StatusSnapshot }) {
             </div>
             <div class="flex items-center gap-3 text-sm">
               <span class="live-dot" /> <span id="liveLabel" class="text-text-muted">updates every 5m</span>
+              <a href="/help" class="text-text-muted hover:text-text">What is this?</a>
               <a href="/login" class="rounded-md border border-base-600 px-3 py-1.5 hover:bg-base-800">Sign in</a>
               <a href="/register" class="rounded-md bg-accent px-3 py-1.5 font-medium text-white hover:bg-accent-hover">Get started</a>
             </div>
@@ -129,7 +130,7 @@ export function StatusLanding(props: { snap: StatusSnapshot }) {
           <footer class="mt-10 text-center text-xs text-text-muted">
             Aggregate, anonymous metrics across all accounts. No organizations, identities, or credentials are shown.
             <br />
-            A personal project by <a href="https://owg.me" class="text-accent hover:underline">the OneWheelGeek</a> · <a href="/privacy" class="text-accent hover:underline">Privacy &amp; disclaimer</a>
+            A personal project by <a href="https://owg.me" class="text-accent hover:underline">the OneWheelGeek</a> · <a href="/help" class="text-accent hover:underline">Help</a> · <a href="/privacy" class="text-accent hover:underline">Privacy &amp; disclaimer</a>
           </footer>
         </div>
 

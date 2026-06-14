@@ -24,7 +24,7 @@ function LoginPage(props: { returnTo: string }) {
           No account yet? <a href="/register" class="text-accent hover:underline">Create one</a>.
         </p>
         <p class="mt-3 text-xs text-text-muted">
-          <a href="/privacy" class="hover:underline">Privacy &amp; disclaimer</a>
+          <a href="/help" class="hover:underline">What is this?</a> · <a href="/privacy" class="hover:underline">Privacy &amp; disclaimer</a>
         </p>
       </div>
       <script src="/assets/vendor/simplewebauthn-browser.min.js"></script>

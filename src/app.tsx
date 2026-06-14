@@ -29,6 +29,11 @@ import { activityRouter } from "./web/routes/activity.tsx";
 import { accountRouter } from "./web/routes/account.tsx";
 import { StatusLanding, statusRouter, snapshot } from "./web/routes/status.tsx";
 import { PrivacyPage } from "./web/routes/privacy.tsx";
+import { HelpPage } from "./web/routes/help.tsx";
+import { getSession } from "./auth/sessions.ts";
+import { getUser } from "./auth/webauthn.ts";
+import { getCookie } from "hono/cookie";
+import { SESSION_COOKIE } from "./auth/middleware.ts";
 import { recordMcpCall } from "./audit.ts";
 import type { Metrics } from "./metrics.ts";
 
@@ -63,6 +68,12 @@ export function createApp(deps: AppDeps) {
   app.route("/status", statusRouter(db, runtime, metrics));
   app.get("/", (c) => c.html(<StatusLanding snap={snapshot(db, runtime, metrics)} />));
   app.get("/privacy", (c) => c.html(<PrivacyPage />));
+  app.get("/help", (c) => {
+    const cookie = getCookie(c, SESSION_COOKIE);
+    const session = cookie ? getSession(db, cookie) : null;
+    const user = session ? getUser(db, session.user_id) : null;
+    return c.html(<HelpPage loggedIn={!!session} userName={user?.display_name} />);
+  });
 
   // --- OAuth metadata + public endpoints ---
   app.route("/.well-known", wellKnownRouter());
