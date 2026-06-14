@@ -78,8 +78,11 @@ Ask the agent to call `list_connections`, then `<slug>__<tool>`.
 ## Deploy
 
 Single container. Put it behind a TLS-terminating proxy/tunnel that sets
-`X-Forwarded-Proto`/`X-Forwarded-Host` (passkeys need a secure origin). See
-[`deploy/docker-compose.yml`](deploy/docker-compose.yml).
+`X-Forwarded-Proto`/`X-Forwarded-Host` (passkeys need a secure origin). Sample composes in [`deploy/`](deploy/):
+
+- [`docker-compose.yml`](deploy/docker-compose.yml) — direct (publishes port 3000)
+- [`docker-compose.cloudflared.yml`](deploy/docker-compose.cloudflared.yml) — behind a Cloudflare Tunnel
+- [`docker-compose.gatecrash.yml`](deploy/docker-compose.gatecrash.yml) — behind a self-hosted [Gatecrash](https://github.com/jclement/gatecrash) tunnel
 
 > **Open registration:** anyone who can reach the URL can create an account.
 > PATs stay isolated per user, but the **network boundary is your real
